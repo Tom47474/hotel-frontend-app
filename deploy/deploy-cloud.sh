@@ -257,4 +257,4 @@ pm2 logs "hotel-frontend-app-$ENV" --lines 10 --nostream 2>/dev/null || echo "No
 echo "✅ Deployment completed successfully"
 EOF
 
-echo "🎉 Deployment to JD Cloud Server completed!"
+echo "🎉 Deployment to Cloud Server completed!"
