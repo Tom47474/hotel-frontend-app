@@ -179,7 +179,7 @@ jobs:
         ssh-keyscan -p ${{ env.CLOUD_PORT }} ${{ env.CLOUD_HOST }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
     # 步骤 13: 部署到云服务器
-    - name: Deploy to JD Cloud Server
+    - name: Deploy to Cloud Server
       run: |
         ENV=${{ env.ENVIRONMENT }} bash deploy/deploy-cloud.sh
       env:
