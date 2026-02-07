@@ -180,8 +180,8 @@ if ! command -v pm2 >/dev/null 2>&1; then
   npm install -g pm2
 fi
 
-pm2 stop "gpt-app-$ENV" 2>/dev/null || true
-pm2 delete "gpt-app-$ENV" 2>/dev/null || true
+pm2 stop "hotel-frontend-app-$ENV" 2>/dev/null || true
+pm2 delete "hotel-frontend-app-$ENV" 2>/dev/null || true
 
 # Next.js standalone 优先
 if [ -d ".next/standalone" ]; then
