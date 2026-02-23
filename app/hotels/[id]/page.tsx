@@ -1,0 +1,147 @@
+"use client";
+
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
+import { useHotelDetail } from "@/features/hotel";
+import { getNights } from "@/utils/date";
+import { filterRoomsByType } from "@/utils/filterRooms";
+import {
+  HotelDetailHeader,
+  HotelImageBanner,
+  HotelBasicInfo,
+  RatingAndLocation,
+  DateGuestSelector,
+  RoomTypeFilters,
+  RoomPriceList,
+  HotelDetailFooter,
+} from "@/components/hotel";
+
+
+
+function getDefaultDates() {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return {
+    checkIn: today.toISOString().slice(0, 10),
+    checkOut: tomorrow.toISOString().slice(0, 10),
+  };
+}
+
+function getLowestPrice(rooms: { price_detail: { price: number }[] }[]): number {
+  if (!rooms?.length) return 0;
+  let min = Infinity;
+  for (const r of rooms) {
+    if (!r.price_detail?.length) continue;
+    const roomMin = Math.min(...r.price_detail.map((p) => p.price));
+    if (roomMin < min) min = roomMin;
+  }
+  return min === Infinity ? 0 : min;
+}
+
+function HotelDetailContent() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const hotelId = Number(params.id);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+
+  const { checkIn, checkOut } = useMemo(() => {
+    const ci = searchParams.get("check_in");
+    const co = searchParams.get("check_out");
+    if (ci && co) return { checkIn: ci, checkOut: co };
+    return getDefaultDates();
+  }, [searchParams]);
+
+  const nights = getNights(checkIn, checkOut);
+  const listHref = `/hotels?check_in=${checkIn}&check_out=${checkOut}`;
+
+  const { data, loading, error } = useHotelDetail({
+    hotelId,
+    checkIn,
+    checkOut,
+  });
+
+  const displayedRooms = useMemo(
+    () => filterRoomsByType(data?.rooms ?? [], activeFilter),
+    [data?.rooms, activeFilter]
+  );
+
+  if (isNaN(hotelId) || hotelId <= 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-zinc-500">
+        无效的酒店ID
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <HotelDetailHeader name="加载中..." />
+        <div className="flex-1 flex items-center justify-center text-zinc-500">
+          加载中...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <HotelDetailHeader name="酒店详情" backHref="/" />
+        <div className="flex-1 flex items-center justify-center text-red-500 px-4">
+          {error || "加载失败"}
+        </div>
+      </div>
+    );
+  }
+
+  const lowestPrice = getLowestPrice(data.rooms ?? []);
+
+  return (
+    <div className="min-h-screen bg-zinc-50 pb-20">
+      <HotelDetailHeader name={data.name} backHref={listHref} />
+      <HotelImageBanner
+        images={data.images ?? []}
+        alt={data.name}
+        reviewCount={data.review_count ?? 0}
+      />
+      <HotelBasicInfo
+        name={data.name}
+        star={data.star}
+        openingDate={data.opening_date}
+        facilities={data.facilities ?? []}
+      />
+      <RatingAndLocation
+        rating={data.rating}
+        reviewCount={data.review_count ?? 0}
+        address={data.address}
+        distance="距您直线6.1公里"
+      />
+      <DateGuestSelector
+        checkIn={checkIn}
+        checkOut={checkOut}
+        nights={nights}
+        editHref={listHref}
+      />
+      <RoomTypeFilters active={activeFilter ?? undefined} 
+          onFilter={(key) => setActiveFilter(key === activeFilter ? null: key)} />
+      <RoomPriceList rooms={displayedRooms} nights={nights} />
+      <HotelDetailFooter lowestPrice={lowestPrice} roomCount={1} />
+    </div>
+  );
+}
+
+export default function HotelDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center text-zinc-500">
+          加载中...
+        </div>
+      }
+    >
+      <HotelDetailContent />
+    </Suspense>
+  );
+}
