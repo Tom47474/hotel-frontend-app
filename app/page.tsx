@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Button, Flex } from 'antd';
 
 // 首页
 export default function Home() {
@@ -14,6 +15,8 @@ export default function Home() {
       >
         浏览酒店
       </Link>
+      <Button type="primary" ghost className="ml-4" href={`/hotels?check_in=${today}&check_out=${tomorrow}`}>浏览酒店</Button>
     </div>
   );
 }
+

@@ -5,6 +5,7 @@ import { Suspense, useMemo, useState } from "react";
 import { useHotelDetail } from "@/features/hotel";
 import { getNights } from "@/utils/date";
 import { filterRoomsByType } from "@/utils/filterRooms";
+import { Drawer, InputNumber, Button } from "antd";
 import {
   HotelDetailHeader,
   HotelImageBanner,
@@ -44,6 +45,10 @@ function HotelDetailContent() {
   const searchParams = useSearchParams();
   const hotelId = Number(params.id);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [rooms, setRooms] = useState(1);
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [guestDrawerOpen, setGuestDrawerOpen] = useState(false);
 
   const { checkIn, checkOut } = useMemo(() => {
     const ci = searchParams.get("check_in");
@@ -123,11 +128,42 @@ function HotelDetailContent() {
         checkOut={checkOut}
         nights={nights}
         editHref={listHref}
+        rooms={rooms}
+        adults={adults}
+        children={children}
+        onGuestClick={() => setGuestDrawerOpen(true)}
       />
-      <RoomTypeFilters active={activeFilter ?? undefined} 
-          onFilter={(key) => setActiveFilter(key === activeFilter ? null: key)} />
+      <RoomTypeFilters active={activeFilter ?? undefined}
+        onFilter={(key) => setActiveFilter(key === activeFilter ? null : key)} />
       <RoomPriceList rooms={displayedRooms} nights={nights} />
       <HotelDetailFooter lowestPrice={lowestPrice} roomCount={1} />
+      <Drawer
+        title="入住人数"
+        placement="bottom"
+        height="auto"
+        open={guestDrawerOpen}
+        onClose={() => setGuestDrawerOpen(false)}
+        footer={
+          <Button type="primary" block onClick={() => setGuestDrawerOpen(false)}>
+            确定
+          </Button>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>房间</span>
+            <InputNumber min={1} max={9} value={rooms} onChange={(v) => setRooms(v ?? 1)} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>成人</span>
+            <InputNumber min={1} max={9} value={adults} onChange={(v) => setAdults(v ?? 1)} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>儿童</span>
+            <InputNumber min={0} max={9} value={children} onChange={(v) => setChildren(v ?? 0)} />
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }
