@@ -8,7 +8,7 @@
 //   );
 // }
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Chip } from "./components/Chip";
 import { DateRangePicker, type DateRange } from "./components/DateRangePicker";
@@ -25,32 +25,65 @@ const quickTags = [
   "可带宠物",
 ] as const;
 
+type BannerItem = {
+  id: number;
+  image_url: string;
+  hotel_id: number;
+  title: string;
+};
+
 export default function Home() {
   const router = useRouter();
+
+    // ===== Banner（接口获取）=====
+  const [banners, setBanners] = useState<BannerItem[]>([]);
+  const [bannerLoading, setBannerLoading] = useState(false);
+  const [bannerError, setBannerError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchBanners() {
+      try {
+        setBannerLoading(true);
+        setBannerError(null);
+
+        const res = await fetch("http://140.143.171.145:4090/api/banners");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const json = await res.json();
+        if (json?.code !== 200) throw new Error(json?.message || "接口返回异常");
+
+        setBanners(Array.isArray(json?.data) ? (json.data as BannerItem[]) : []);
+      } catch (e: any) {
+        setBannerError(e?.message || "获取banner失败");
+        setBanners([]);
+      } finally {
+        setBannerLoading(false);
+      }
+    }
+
+    fetchBanners();
+  }, []);
 
   // 顶部tab
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("国内");
 
-  // 城市（图里像“上海”那种）
+  // 城市
   const [city, setCity] = useState("上海");
 
   // 关键词
   const [keyword, setKeyword] = useState("");
 
-  // 日期（必须：日历组件）
+  // 日期（日历组件）
   const [dateRange, setDateRange] = useState<DateRange>({
     checkIn: null,
     checkOut: null,
   });
 
-  // 简单筛选：星级（你也可以换成价格/评分）
+  // 简单筛选：星级
   const [star, setStar] = useState("不限");
 
   // 快捷标签（多选）
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
-  // banner（你只做展示+点击跳转即可）
-  const bannerHotelId = "h001";
 
   const canSearch = useMemo(
     () => Boolean(dateRange.checkIn && dateRange.checkOut),
@@ -69,18 +102,13 @@ export default function Home() {
       (pos) => {
         const lat = pos.coords.latitude.toFixed(5);
         const lng = pos.coords.longitude.toFixed(5);
-        // 小白版：不接地图，先直接把经纬度当“当前位置”
+        // 不接地图，先直接把经纬度当“当前位置”
         setCity(`${lat},${lng}`);
       },
       (err) => alert("定位失败：" + err.message),
       { enableHighAccuracy: true, timeout: 8000 }
     );
   }
-
-   function goBanner() {
-     // 只负责跳转，详情页由其他同学实现
-     router.push(`/hotel/${encodeURIComponent(bannerHotelId)}`);
-   }
 
   function handleSearch() {
     // 只负责跳转，列表页由其他同学实现
@@ -99,26 +127,57 @@ export default function Home() {
   return (
     <main className="min-h-dvh bg-gradient-to-b from-blue-50 to-white">
       <div className="mx-auto max-w-md px-4 pb-10 pt-4">
-        {/* 顶部Banner（简化成一张卡片，点了跳详情） */}
-        <button
-          type="button"
-          onClick={goBanner}
-          className="relative mb-3 w-full overflow-hidden rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm"
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_55%)]" />
-          <div className="relative">
-            <div className="text-xs text-blue-600">酒店特惠</div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">
-              蓝湾海景酒店
+        {/* 顶部Banner（接口获取） */}
+        <section className="mb-3">
+          {bannerLoading && (
+            <div className="rounded-2xl border border-blue-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
+              Banner 加载中...
             </div>
-            <div className="mt-1 text-sm text-slate-600">
-              海景房 · 自助早餐 · 限时优惠
+          )}
+
+          {!bannerLoading && bannerError && (
+            <div className="rounded-2xl border border-red-100 bg-white p-4 text-sm text-red-600 shadow-sm">
+              Banner 获取失败：{bannerError}
             </div>
-            <div className="mt-3 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-              点击直达详情 →
+          )}
+
+          {!bannerLoading && !bannerError && banners.length > 0 && (
+            <div className="grid gap-3">
+              {/* 只显示第一个 Banner */}
+              <button
+                key={banners[0].id}
+                type="button"
+                onClick={() => router.push(`/hotel/${banners[0].hotel_id}`)}
+                className="relative w-full overflow-hidden rounded-2xl border border-blue-100 bg-white text-left shadow-sm"
+              >
+                <div className="h-36 w-full bg-blue-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={banners[0].image_url}
+                    alt={banners[0].title}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+
+                <div className="p-4">
+                  <div className="text-xs text-blue-600">广告</div>
+                  <div className="mt-1 text-base font-semibold text-slate-900">
+                    {banners[0].title}
+                  </div>
+                  <div className="mt-3 inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                    点击直达详情 →
+                  </div>
+                </div>
+              </button>
             </div>
-          </div>
-        </button>
+          )}
+
+          {!bannerLoading && !bannerError && banners.length === 0 && (
+            <div className="rounded-2xl border border-blue-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
+              暂无 Banner
+            </div>
+          )}
+        </section>
 
         {/* tab栏（国内/海外/钟点房/民宿） */}
         <div className="mb-3 flex rounded-2xl border border-blue-100 bg-white p-1 shadow-sm">
@@ -144,7 +203,7 @@ export default function Home() {
 
         {/* 核心查询卡片 */}
         <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
-          {/* 城市 + 定位（图里左边城市 右边定位按钮那种感觉） */}
+          {/* 城市 + 定位（左边城市 右边定位按钮） */}
           <div className="mb-3 flex items-center gap-2">
             <div className="flex-1">
               <div className="mb-1 text-xs text-slate-600">城市</div>
@@ -180,13 +239,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 日期（你的日历组件） */}
+          {/* 日期（日历组件） */}
           <div className="mb-3">
             <div className="mb-1 text-xs text-slate-600">入住日期</div>
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
 
-          {/* 筛选条件（简化星级，下拉即可） */}
+          {/* 筛选条件（星级，下拉即可） */}
           <div className="mb-3">
             <div className="mb-1 text-xs text-slate-600">筛选</div>
             <select
