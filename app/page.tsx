@@ -97,15 +97,71 @@ export default function Home() {
   }
 
   function handleLocate() {
-    if (!navigator.geolocation) return alert("浏览器不支持定位");
+    if (!navigator.geolocation) {
+      alert("浏览器不支持定位");
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude.toFixed(5);
-        const lng = pos.coords.longitude.toFixed(5);
-        // 不接地图，先直接把经纬度当“当前位置”
-        setCity(`${lat},${lng}`);
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        try {
+          const url = `http://140.143.171.145:4090/api/getCurrentLocation?lng=${encodeURIComponent(
+            String(lng)
+          )}&lat=${encodeURIComponent(String(lat))}`;
+
+          const res = await fetch(url);
+
+          // 先读 text，再 JSON.parse，避免空响应导致 res.json() 报错
+          const text = await res.text();
+          let json: any = null;
+
+          try {
+            json = text ? JSON.parse(text) : null;
+          } catch {
+            throw new Error(
+              `接口返回不是JSON：${text.slice(0, 120) || "(空响应)"}，HTTP ${res.status}`
+            );
+          }
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          if (!json || json.code !== 200) {
+            throw new Error(json?.message || "接口返回异常");
+          }
+
+          // 你的响应结构：data.regeocode.addressComponent.city
+          const addressComponent = json?.data?.regeocode?.addressComponent;
+          const city =
+            addressComponent?.city ||
+            addressComponent?.province || // 有些城市可能返回空，用省兜底
+            "";
+
+          if (city) {
+            setCity(city); //  显示城市名
+            return;
+          }
+
+          // 再兜底：用 formatted_address
+          const fullAddress = json?.data?.regeocode?.formatted_address;
+          if (fullAddress) {
+            setCity(fullAddress);
+            return;
+          }
+
+          setCity("定位成功（未识别城市）");
+        } catch (e: any) {
+          alert("定位成功，但获取城市失败：" + (e?.message || "未知错误"));
+          // 最后兜底：显示经纬度
+          setCity(`${lat.toFixed(5)},${lng.toFixed(5)}`);
+        }
       },
-      (err) => alert("定位失败：" + err.message),
+      (err) => {
+        alert("定位失败：" + err.message);
+      },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   }
