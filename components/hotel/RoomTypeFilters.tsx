@@ -5,7 +5,6 @@ const DEFAULT_FILTERS = [
   "含早餐",
   "单人房",
   "大床房",
-  "筛选",
 ];
 
 interface RoomTypeFiltersProps {
@@ -33,7 +32,6 @@ export function RoomTypeFilters({
           }`}
         >
           {f}
-          {f === "筛选" && " ▼"}
         </button>
       ))}
     </div>

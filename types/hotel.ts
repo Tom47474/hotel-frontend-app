@@ -36,6 +36,8 @@ export interface HotelRoom {
   bed_type: string | null;
   max_guest: number | null;
   price_detail: RoomPriceDetail[];
+  images: Array<{ url: string; type: string }>; 
+  tags: Array<{ id: number; name: string }>;  
 }
 
 export interface RoomPriceDetail {

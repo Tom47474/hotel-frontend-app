@@ -6,6 +6,7 @@ import { useHotelDetail } from "@/features/hotel";
 import { getNights } from "@/utils/date";
 import { filterRoomsByType } from "@/utils/filterRooms";
 import { Drawer, InputNumber, Button } from "antd";
+import { useRouter } from "next/navigation";
 import {
   HotelDetailHeader,
   HotelImageBanner,
@@ -41,6 +42,7 @@ function getLowestPrice(rooms: { price_detail: { price: number }[] }[]): number 
 }
 
 function HotelDetailContent() {
+  const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const hotelId = Number(params.id);
@@ -50,21 +52,42 @@ function HotelDetailContent() {
   const [children, setChildren] = useState(0);
   const [guestDrawerOpen, setGuestDrawerOpen] = useState(false);
 
-  const { checkIn, checkOut } = useMemo(() => {
-    const ci = searchParams.get("check_in");
-    const co = searchParams.get("check_out");
-    if (ci && co) return { checkIn: ci, checkOut: co };
-    return getDefaultDates();
-  }, [searchParams]);
+  const checkIn = searchParams.get("check_in") ?? getDefaultDates().checkIn;
+  const checkOut = searchParams.get("check_out") ?? getDefaultDates().checkOut;
+
+  // 日期变化时更新 URL
+  function handleDatesChange(ci: string, co: string) {
+    const current = new URLSearchParams(searchParams.toString());
+    current.set("check_in", ci);
+    current.set("check_out", co);
+    // replace 不产生新历史记录，用 push 则会
+    router.replace(`?${current.toString()}`, { scroll: false });
+  }
 
   const nights = getNights(checkIn, checkOut);
   const listHref = `/hotels?check_in=${checkIn}&check_out=${checkOut}`;
+
+
 
   const { data, loading, error } = useHotelDetail({
     hotelId,
     checkIn,
     checkOut,
   });
+
+  // 从 data.rooms 提取每天最低价
+  const dailyPrices = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (!data?.rooms) return map;
+    for (const room of data.rooms) {
+      for (const pd of room.price_detail ?? []) {
+        if (map[pd.date] == null || pd.price < map[pd.date]) {
+          map[pd.date] = pd.price;
+        }
+      }
+    }
+    return map;
+  }, [data]);
 
   const displayedRooms = useMemo(
     () => filterRoomsByType(data?.rooms ?? [], activeFilter),
@@ -130,13 +153,15 @@ function HotelDetailContent() {
         editHref={listHref}
         rooms={rooms}
         adults={adults}
-        children={children}
+        // children={children}
         onGuestClick={() => setGuestDrawerOpen(true)}
+        prices={dailyPrices}
+        onDatesChange={handleDatesChange}
       />
       <RoomTypeFilters active={activeFilter ?? undefined}
         onFilter={(key) => setActiveFilter(key === activeFilter ? null : key)} />
-      <RoomPriceList rooms={displayedRooms} nights={nights} />
-      <HotelDetailFooter lowestPrice={lowestPrice} roomCount={1} />
+      <RoomPriceList rooms={displayedRooms} nights={nights} roomCount={rooms} />
+      <HotelDetailFooter lowestPrice={lowestPrice} roomCount={rooms} />
       <Drawer
         title="入住人数"
         placement="bottom"
