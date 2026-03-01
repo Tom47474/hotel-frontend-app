@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
+import { getApiBaseUrl } from "@/utils/api";
 import { DateRangePicker, type DateRange } from "../components/DateRangePicker";
-
-const API_BASE = "http://140.143.171.145:4090";
 
 /** 根据两点经纬度计算直线距离（米），Haversine 公式 */
 function haversineDistanceMeters(
@@ -165,7 +164,7 @@ export default function ListPage() {
         setUserCoords({ lat, lng });
         try {
           const res = await fetch(
-            `${API_BASE}/api/getCurrentLocation?lng=${encodeURIComponent(String(lng))}&lat=${encodeURIComponent(String(lat))}`
+            `${getApiBaseUrl()}/api/getCurrentLocation?lng=${encodeURIComponent(String(lng))}&lat=${encodeURIComponent(String(lat))}`
           );
           const text = await res.text();
           let json: { code?: number; data?: { regeocode?: { addressComponent?: { city?: string; province?: string }; formatted_address?: string } } } | null = null;
@@ -213,6 +212,8 @@ export default function ListPage() {
     const hotelType = TAB_TO_HOTEL_TYPE[tab];
     if (hotelType) params.set("hotel_type", hotelType);
     if (city && city !== "我的位置") params.set("city", city);
+    if (checkIn) params.set("check_in", checkIn);
+    if (checkOut) params.set("check_out", checkOut);
     const starMin = STAR_TO_MIN[starParam];
     if (starMin) params.set("star_min", starMin);
     const sortVal = SORT_TO_API[activeSort];
@@ -221,7 +222,7 @@ export default function ListPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`${API_BASE}/api/hotels?${params.toString()}`)
+    fetch(`${getApiBaseUrl()}/api/hotels?${params.toString()}`)
       .then((res) => res.json())
       .then((json: { code: number; message?: string; data?: HotelItem[] }) => {
         if (cancelled) return;
@@ -244,7 +245,7 @@ export default function ListPage() {
     return () => {
       cancelled = true;
     };
-  }, [tab, city, starParam, activeSort]);
+  }, [tab, city, checkIn, checkOut, starParam, activeSort]);
 
   const hotelsWithDistance = useMemo(() => {
     const list = hotels.map((h) => {

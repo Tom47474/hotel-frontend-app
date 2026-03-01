@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getApiBaseUrl } from "@/utils/api";
 import { Chip } from "./components/Chip";
 import { DateRangePicker, type DateRange } from "./components/DateRangePicker";
 
@@ -38,7 +39,7 @@ export default function Home() {
         setBannerLoading(true);
         setBannerError(null);
 
-        const res = await fetch("http://140.143.171.145:4090/api/banners");
+        const res = await fetch(`${getApiBaseUrl()}/api/banners`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const json = await res.json();
@@ -100,7 +101,7 @@ export default function Home() {
         const lng = pos.coords.longitude;
 
         try {
-          const url = `http://140.143.171.145:4090/api/getCurrentLocation?lng=${encodeURIComponent(
+          const url = `${getApiBaseUrl()}/api/getCurrentLocation?lng=${encodeURIComponent(
             String(lng)
           )}&lat=${encodeURIComponent(String(lat))}`;
 
