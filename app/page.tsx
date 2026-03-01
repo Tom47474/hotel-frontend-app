@@ -61,7 +61,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("国内");
 
   // 城市
-  const [city, setCity] = useState("上海");
+  const [city, setCity] = useState("");
 
   // 关键词
   const [keyword, setKeyword] = useState("");

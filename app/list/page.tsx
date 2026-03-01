@@ -292,9 +292,9 @@ export default function ListPage() {
           <header className="flex items-stretch border-b border-slate-100">
             <button
               type="button"
-              onClick={() => router.back()}
+              onClick={() => router.push("/")}
               className="flex h-11 w-10 shrink-0 items-center justify-center text-slate-600 hover:bg-slate-50"
-              aria-label="返回"
+              aria-label="返回首页"
             >
               ‹
             </button>
