@@ -1,14 +1,5 @@
-import Link from "next/link";
-import { Button, Flex } from 'antd';
-
-// export default function Home() {
-//   return (
-//     <div className="mt-10">
-//       这里是首页
-//     </div>
-//   );
-// }
 "use client";
+
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Chip } from "./components/Chip";
@@ -204,7 +195,7 @@ export default function Home() {
               <button
                 key={banners[0].id}
                 type="button"
-                onClick={() => router.push(`/hotel/${banners[0].hotel_id}`)}
+                onClick={() => router.push(`/hotels/${banners[0].hotel_id}`)}
                 className="relative w-full overflow-hidden rounded-2xl border border-blue-100 bg-white text-left shadow-sm"
               >
                 <div className="h-36 w-full bg-blue-50">

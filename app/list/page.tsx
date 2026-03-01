@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import { DateRangePicker, type DateRange } from "../components/DateRangePicker";
@@ -412,8 +413,13 @@ export default function ListPage() {
             !error &&
             hotelsWithDistance.map(({ hotel, distanceMeters }, index) => {
               const distanceText = distanceMeters != null ? formatDistance(distanceMeters) : "—";
+              const detailHref =
+                checkIn && checkOut
+                  ? `/hotels/${hotel.hotel_id}?check_in=${checkIn}&check_out=${checkOut}`
+                  : `/hotels/${hotel.hotel_id}`;
               return (
             <li key={hotel.hotel_id} className="rounded-lg border border-slate-100 bg-white py-4 px-3 shadow-sm">
+              <Link href={detailHref} className="block">
               <div className="flex gap-3">
                 {/* 左侧图片：酒店实景图 + 右下播放图标 */}
                 <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-200">
@@ -479,6 +485,7 @@ export default function ListPage() {
                   </div>
                 </div>
               </div>
+              </Link>
             </li>
           );})}
         </ul>
