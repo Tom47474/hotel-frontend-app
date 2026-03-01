@@ -10,6 +10,8 @@ export type DateRange = {
 type Props = {
   value: DateRange;
   onChange: (next: DateRange) => void;
+  /** 为 true 时初始就展开日历（用于列表页滑出弹窗，点击即直接看到日历） */
+  defaultOpen?: boolean;
 };
 
 function pad2(n: number) {
@@ -47,9 +49,9 @@ function formatLabel(iso: string | null) {
   return `${pad2(d.getMonth() + 1)}月${pad2(d.getDate())}日`;
 }
 
-export function DateRangePicker({ value, onChange }: Props) {
+export function DateRangePicker({ value, onChange, defaultOpen = false }: Props) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [month, setMonth] = useState<Date>(() => startOfMonth(new Date()));
 
   const checkInDate = useMemo(
@@ -125,21 +127,8 @@ export function DateRangePicker({ value, onChange }: Props) {
     return "请选择入住/离店";
   }, [value.checkIn, value.checkOut]);
 
-  return (
-    <div ref={wrapperRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-      >
-        <span className={value.checkIn ? "text-slate-900" : "text-slate-500"}>
-          {label}
-        </span>
-        <span className="text-slate-400">📅</span>
-      </button>
-
-      {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-2xl border border-blue-100 bg-white p-3 shadow-lg">
+  const calendarContent = (
+    <div className="absolute z-20 mt-2 w-full rounded-2xl border border-blue-100 bg-white p-3 shadow-lg">
           <div className="mb-2 flex items-center justify-between">
             <button
               type="button"
@@ -215,7 +204,21 @@ export function DateRangePicker({ value, onChange }: Props) {
             </button>
           </div>
         </div>
-      )}
+  );
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-left text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+      >
+        <span className={value.checkIn ? "text-slate-900" : "text-slate-500"}>
+          {label}
+        </span>
+        <span className="text-slate-400">📅</span>
+      </button>
+      {open && calendarContent}
     </div>
   );
 }
