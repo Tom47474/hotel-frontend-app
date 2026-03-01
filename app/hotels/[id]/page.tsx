@@ -65,7 +65,7 @@ function HotelDetailContent() {
   }
 
   const nights = getNights(checkIn, checkOut);
-  const listHref = `/hotels?check_in=${checkIn}&check_out=${checkOut}`;
+  const listHref = `/list?checkIn=${checkIn}&checkOut=${checkOut}`;
 
 
 
