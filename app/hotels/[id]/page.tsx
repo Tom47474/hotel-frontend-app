@@ -76,18 +76,8 @@ function HotelDetailContent() {
   });
 
   // 从 data.rooms 提取每天最低价
-  const dailyPrices = useMemo(() => {
-    const map: Record<string, number> = {};
-    if (!data?.rooms) return map;
-    for (const room of data.rooms) {
-      for (const pd of room.price_detail ?? []) {
-        if (map[pd.date] == null || pd.price < map[pd.date]) {
-          map[pd.date] = pd.price;
-        }
-      }
-    }
-    return map;
-  }, [data]);
+  // 日历价格由 <HotelDatePicker> 内部自行请求，不再在此处管理。
+  // 只需向选择器传递 hotelId 即可。
 
   const displayedRooms = useMemo(
     () => filterRoomsByType(data?.rooms ?? [], activeFilter),
@@ -147,6 +137,7 @@ function HotelDetailContent() {
         distance="距您直线6.1公里"
       />
       <DateGuestSelector
+        hotelId={hotelId}
         checkIn={checkIn}
         checkOut={checkOut}
         nights={nights}
@@ -155,7 +146,6 @@ function HotelDetailContent() {
         adults={adults}
         // children={children}
         onGuestClick={() => setGuestDrawerOpen(true)}
-        prices={dailyPrices}
         onDatesChange={handleDatesChange}
       />
       <RoomTypeFilters active={activeFilter ?? undefined}

@@ -4,6 +4,7 @@ import { Drawer } from "antd";
 import { HotelDatePicker } from "@/components/hotel/HotelDatePicker";
 
 interface DateGuestSelectorProps {
+  hotelId: number;            // 用于内部请求日历价格
   checkIn: string;
   checkOut: string;
   nights: number;
@@ -22,6 +23,7 @@ function formatDisplayDate(s: string) {
 }
 
 export function DateGuestSelector({
+  hotelId,
   checkIn,
   checkOut,
   nights,
@@ -30,7 +32,6 @@ export function DateGuestSelector({
   children = 0,
   onGuestClick,
   onDatesChange,
-  prices = {}, 
 }: DateGuestSelectorProps & { onDatesChange?: (ci: string, co: string) => void }) {
   const [dateDrawerOpen, setDateDrawerOpen] = useState(false);
 
@@ -83,13 +84,14 @@ export function DateGuestSelector({
         bodyStyle={{ padding: 0 }}
       >
         <HotelDatePicker
+          hotelId={hotelId}
           checkIn={checkIn}
           checkOut={checkOut}
           onChange={(ci, co) => {
             onDatesChange?.(ci, co);
           }}
           onClose={() => setDateDrawerOpen(false)}
-          prices={prices}
+          // 注意这里不再传 prices; 组件内部会根据 hotelId 和 visible months 请求
           minNights={1}
           maxNights={30}
         />

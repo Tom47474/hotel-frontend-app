@@ -1,20 +1,85 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useMemo } from "react";
+import { useCalendarPrices } from "@/features/hotel/useCalendarPrices";
 
 interface HotelDatePickerProps {
+  hotelId: number;         // 用于请求日历价格
   checkIn: string;        // YYYY-MM-DD
   checkOut: string;       // YYYY-MM-DD
   onChange: (checkIn: string, checkOut: string) => void;
   onClose?: () => void;
   /** 每个日期的最低价格，key 为 YYYY-MM-DD */
-  prices?: Record<string, number>;
+  prices?: Record<string, number>; // 仍可透传，但通常不用
   minNights?: number;     // 最少入住晚数，默认 1
   maxNights?: number;     // 最多入住晚数，默认 30
 }
 
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"];
 const MONTHS = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+
+// helper component for a single calendar day cell. memoized to avoid
+// re-render unless its props actually change.
+interface DayCellProps {
+  date: Date;
+  price?: number;
+  isPast: boolean;
+  disabled: boolean;
+  isStart: boolean;
+  isEnd: boolean;
+  inRange: boolean;
+  isToday: boolean;
+  onClick: () => void;
+  onMouseEnter: () => void;
+}
+const DayCell = React.memo(function DayCell({
+  date,
+  price,
+  isPast,
+  disabled,
+  isStart,
+  isEnd,
+  inRange,
+  isToday,
+  onClick,
+  onMouseEnter,
+}: DayCellProps) {
+  return (
+    <div
+      key={toDateStr(date)}
+      className={`relative flex flex-col items-center justify-center py-1 cursor-pointer select-none
+                        ${inRange && !isStart && !isEnd ? "bg-blue-50" : ""}
+                        ${isStart ? "rounded-l-full" : ""}
+                        ${isEnd ? "rounded-r-full" : ""}
+                      `}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+    >
+      <div className={`w-9 h-9 flex flex-col items-center justify-center rounded-full
+                        ${isStart || isEnd ? "bg-blue-600" : ""}
+                        ${!isStart && !isEnd && !isPast && !disabled ? "hover:bg-zinc-100" : ""}
+                        ${isPast || disabled ? "opacity-30 cursor-not-allowed" : ""}
+                      `}>
+        <span className={`text-sm leading-none font-medium
+                          ${isStart || isEnd ? "text-white" : isToday ? "text-blue-600" : "text-zinc-800"}
+                          ${isPast ? "text-zinc-300" : ""}
+                        `}>
+          {date.getDate()}
+        </span>
+        {price != null && !isPast && (
+          <span className={`text-[9px] leading-none mt-0.5
+                            ${isStart || isEnd ? "text-blue-200" : "text-blue-500"}
+                          `}>
+            ¥{price}
+          </span>
+        )}
+      </div>
+      {isToday && !isStart && !isEnd && (
+        <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-blue-500" />
+      )}
+    </div>
+  );
+});
 
 function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -25,11 +90,12 @@ function parseDate(s: string): Date {
   return new Date(y, m - 1, d);
 }
 
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
+// function addDays(d: Date, n: number): Date {
+//   const r = new Date(d);
+//   r.setDate(r.getDate() + n);
+//   return r;
+// }
+// (unused helper removed to silence lint)
 
 function diffDays(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / 86400000);
@@ -60,6 +126,7 @@ function buildMonthGrid(year: number, month: number): (Date | null)[] {
 }
 
 export function HotelDatePicker({
+  hotelId,
   checkIn,
   checkOut,
   onChange,
@@ -75,6 +142,30 @@ export function HotelDatePicker({
   const [baseYear, setBaseYear] = useState(today.getFullYear());
   const [baseMonth, setBaseMonth] = useState(today.getMonth());
 
+  // fetch calendar prices for currently visible months
+    /**
+     * rangeStart：用 useMemo 计算当前可见面板的起始日期，这里是 baseYear/baseMonth 的第一天，toISOString().slice(0,10) 得到 YYYY‑MM‑DD 字符串（UTC 日期）。
+  rangeEnd：计算当前面板「第二个月的最后一天」，new Date(baseYear, baseMonth + 2, 0) 会返回 baseMonth+1（月后的最后一天），再转成 YYYY‑MM‑DD。
+  useCalendarPrices(...)：把上面算出的 start/end 传给 hook，hook 会去拉取并返回该区间内的价格映射 fetchedPrices。
+  useMemo 的作用：只有当 baseYear 或 baseMonth 变化（用户翻月）时才重新计算 start/end，从而避免每次渲染都触发请求
+     */
+  const rangeStart = useMemo(() => {
+    return new Date(baseYear, baseMonth, 1).toISOString().slice(0, 10);
+  }, [baseYear, baseMonth]);
+  const rangeEnd = useMemo(() => {
+    const endOfSecond = new Date(baseYear, baseMonth + 2, 0);
+    return endOfSecond.toISOString().slice(0, 10);
+  }, [baseYear, baseMonth]);
+
+  const { prices: fetchedPrices } = useCalendarPrices({
+    hotelId,
+    start: rangeStart,
+    end: rangeEnd,
+  });
+
+  // merge any manually passed prices prop (for backward compatibility)
+  const mergedPrices = useMemo(() => ({ ...fetchedPrices, ...prices }), [fetchedPrices, prices]);
+
   // 选择状态：null | 'start'(已选入住，等待选离店)
   const [selecting, setSelecting] = useState<"idle" | "start">("idle");
   const [tempStart, setTempStart] = useState<string | null>(null);
@@ -84,14 +175,56 @@ export function HotelDatePicker({
   const ciDate = checkIn ? parseDate(checkIn) : null;
   const coDate = checkOut ? parseDate(checkOut) : null;
 
-  // 当前展示两个月
-  const months = [
-    { year: baseYear, month: baseMonth },
-    (() => {
-      const m = baseMonth + 1;
-      return m > 11 ? { year: baseYear + 1, month: 0 } : { year: baseYear, month: m };
-    })(),
-  ];
+  // 当前展示两个月 (memoized so the array identity only changes when
+  // baseYear/baseMonth change)
+  const months = useMemo(
+    () => [
+      { year: baseYear, month: baseMonth },
+      (() => {
+        const m = baseMonth + 1;
+        return m > 11 ? { year: baseYear + 1, month: 0 } : { year: baseYear, month: m };
+      })(),
+    ],
+    [baseYear, baseMonth]
+  );
+
+  /**
+   * 
+   * monthGrids（useMemo）
+
+功能：为当前显示的两个月（months 数组）生成日历格子数组（每个月是 (Date|null)[]），并对结果做缓存。
+为什么：避免每次渲染都重新计算网格，只有 months 变化（翻月）时才重算，提升渲染性能。
+visiblePrices（useMemo）
+
+功能：从 mergedPrices 中提取出当前两个可见月份内的日期→价格映射，返回一个只包含可见日期的 map。
+为什么：减小 DayCell 渲染时的查找成本，避免在每个格子渲染时遍历或访问一个很大的价格表，且只有 monthGrids 或 mergedPrices 变更才重新计算。
+prevMonth / nextMonth（useCallback）
+
+功能：处理翻页（上一月/下一月），正确处理跨年（month 从 0 到 11 的包裹），通过 setBaseMonth/setBaseYear 更新基准月份。
+为什么用 useCallback：把函数引用稳定下来，避免不必要的 re-render 传递给下游组件或作为依赖项时触发多余更新。依赖 baseMonth，只有当 baseMonth 变化时才重建回调。
+   */
+
+  // memoize grids for the two visible months so they aren't recalculated
+  // on every render; dependencies are baseYear/baseMonth which change
+  // only when the user navigates.
+  const monthGrids: (Date | null)[][] = useMemo(() => {
+    return months.map(({ year, month }) => buildMonthGrid(year, month));
+  }, [months]);
+
+  // collect price entries only for the currently visible months (当前月和下个月)
+  // so lookup becomes cheaper and we aren't iterating over a large `prices` map
+  const visiblePrices = useMemo(() => {
+    const result: Record<string, number> = {};
+    monthGrids.forEach((grid: (Date|null)[]) => {
+      grid.forEach((date: Date|null) => {
+        if (!date) return;
+        const ds = toDateStr(date);
+        const p = mergedPrices[ds];
+        if (p != null) result[ds] = p;
+      });
+    });
+    return result;
+  }, [monthGrids, mergedPrices]);
 
   const prevMonth = useCallback(() => {
     if (baseMonth === 0) { setBaseYear(y => y - 1); setBaseMonth(11); }
@@ -262,8 +395,8 @@ export function HotelDatePicker({
 
       {/* 日历主体（可滚动） */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
-        {months.map(({ year, month }) => {
-          const grid = buildMonthGrid(year, month);
+        {months.map(({ year, month }, mi) => {
+          const grid = monthGrids[mi];
           return (
             <div key={`${year}-${month}`} className="mb-6">
               <p className="text-sm font-semibold text-zinc-700 mb-3 text-center">
@@ -279,54 +412,31 @@ export function HotelDatePicker({
               <div className="grid grid-cols-7">
                 {grid.map((date, idx) => {
                   if (!date) return <div key={idx} />;
-                  const ds = toDateStr(date);
+                  const ds = toDateStr(date); // move outside so it's available for key below
+                  // const ds = toDateStr(date);
                   const isPast = date < today;
                   const disabled = isDisabled(date);
                   const isStart = isRangeStart(ds);
                   const isEnd = isRangeEnd(ds);
                   const inRange = isInRange(ds);
                   const isToday = toDateStr(date) === toDateStr(today);
-                  const price = prices[ds];
-
-                  let cellBg = "";
-                  if (isStart) cellBg = "bg-blue-600 text-white rounded-full";
-                  else if (isEnd) cellBg = "bg-blue-600 text-white rounded-full";
-                  else if (inRange) cellBg = "bg-blue-50";
+                  // 只为当前和下月渲染价格，已在 visiblePrices 中缓存
+                  const price = visiblePrices[ds];
 
                   return (
-                    <div
+                    <DayCell
                       key={ds}
-                      className={`relative flex flex-col items-center justify-center py-1 cursor-pointer select-none
-                        ${inRange && !isStart && !isEnd ? "bg-blue-50" : ""}
-                        ${isStart ? "rounded-l-full" : ""}
-                        ${isEnd ? "rounded-r-full" : ""}
-                      `}
+                      date={date}
+                      price={price}
+                      isPast={isPast}
+                      disabled={disabled}
+                      isStart={isStart}
+                      isEnd={isEnd}
+                      inRange={inRange}
+                      isToday={isToday}
                       onClick={() => !disabled && !isPast && handleDayClick(date)}
                       onMouseEnter={() => !disabled && !isPast && handleDayHover(date)}
-                    >
-                      <div className={`w-9 h-9 flex flex-col items-center justify-center rounded-full
-                        ${isStart || isEnd ? "bg-blue-600" : ""}
-                        ${!isStart && !isEnd && !isPast && !disabled ? "hover:bg-zinc-100" : ""}
-                        ${isPast || disabled ? "opacity-30 cursor-not-allowed" : ""}
-                      `}>
-                        <span className={`text-sm leading-none font-medium
-                          ${isStart || isEnd ? "text-white" : isToday ? "text-blue-600" : "text-zinc-800"}
-                          ${isPast ? "text-zinc-300" : ""}
-                        `}>
-                          {date.getDate()}
-                        </span>
-                        {price != null && !isPast && (
-                          <span className={`text-[9px] leading-none mt-0.5
-                            ${isStart || isEnd ? "text-blue-200" : "text-blue-500"}
-                          `}>
-                            ¥{price}
-                          </span>
-                        )}
-                      </div>
-                      {isToday && !isStart && !isEnd && (
-                        <div className="absolute bottom-0.5 w-1 h-1 rounded-full bg-blue-500" />
-                      )}
-                    </div>
+                    />
                   );
                 })}
               </div>
