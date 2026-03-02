@@ -134,7 +134,7 @@ export default function ListPageClient() {
     [checkIn, checkOut]
   );
 
-  const [activeSort, setActiveSort] = useState<(typeof SORT_OPTIONS)[number](
+  const [activeSort, setActiveSort] = useState<(typeof SORT_OPTIONS)[number]>(
     "智能排序"
   );
   const [selectedTag, setSelectedTag] = useState<string | null>(
