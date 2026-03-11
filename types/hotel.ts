@@ -6,6 +6,8 @@ export interface HotelDetail {
   rating: number;
   review_count: number;
   address: string;
+  latitude?: number;
+  longitude?: number;
   opening_date: string | null;
   description: string | null;
   contacts: HotelContact[];
@@ -53,6 +55,26 @@ export interface HotelPromotion {
   discount?: number;
   minus?: number;
   description?: string;
+}
+
+export type HotelPoiType =
+  | "traffic"
+  | "scenic"
+  | "food"
+  | "shopping"
+  | "business"
+  | "hospital"
+  | "school"
+  | "other";
+
+export interface HotelPoi {
+  poi_id: number;
+  name: string;
+  type: HotelPoiType | (string & {});
+  /** 距离酒店的直线距离（米） */
+  distance: number;
+  longitude: number;
+  latitude: number;
 }
 
 /** API 统一返回格式 */

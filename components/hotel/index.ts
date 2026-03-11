@@ -7,3 +7,4 @@ export { DateNightsBanner } from "./DateNightsBanner";
 export { RoomTypeFilters } from "./RoomTypeFilters";
 export { RoomPriceList } from "./RoomPriceList";
 export { HotelDetailFooter } from "./HotelDetailFooter";
+export { HotelPoiSection } from "./HotelPoiSection";

@@ -81,7 +81,7 @@ export function DateGuestSelector({
         height="85vh"
         open={dateDrawerOpen}
         onClose={() => setDateDrawerOpen(false)}
-        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 } }}
       >
         <HotelDatePicker
           hotelId={hotelId}

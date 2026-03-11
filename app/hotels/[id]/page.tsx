@@ -16,6 +16,7 @@ import {
   RoomTypeFilters,
   RoomPriceList,
   HotelDetailFooter,
+  HotelPoiSection,
 } from "@/components/hotel";
 
 
@@ -151,6 +152,12 @@ function HotelDetailContent() {
       <RoomTypeFilters active={activeFilter ?? undefined}
         onFilter={(key) => setActiveFilter(key === activeFilter ? null : key)} />
       <RoomPriceList rooms={displayedRooms} nights={nights} roomCount={rooms} />
+      <HotelPoiSection
+        hotelId={hotelId}
+        hotelName={data.name}
+        hotelLatitude={data.latitude}
+        hotelLongitude={data.longitude}
+      />
       <HotelDetailFooter lowestPrice={lowestPrice} roomCount={rooms} />
       <Drawer
         title="入住人数"

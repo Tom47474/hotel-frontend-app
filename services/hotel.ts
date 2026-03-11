@@ -1,5 +1,5 @@
 import { api } from "./request";
-import type { ApiResponse, HotelDetail } from "@/types/hotel";
+import type { ApiResponse, HotelDetail, HotelPoi } from "@/types/hotel";
 
 export interface GetHotelDetailParams {
   hotelId: number;
@@ -76,6 +76,15 @@ export async function getHotelList(
   );
   if (res.code !== 200) {
     throw new Error(res.message || "获取酒店列表失败");
+  }
+  return Array.isArray(res.data) ? res.data : [];
+}
+
+/** 用户端 - 酒店周边 POI 列表 */
+export async function getHotelPoi(hotelId: number): Promise<HotelPoi[]> {
+  const res = await api.get<ApiResponse<HotelPoi[]>>(`/api/hotel/${hotelId}/poi`);
+  if (res.code !== 200) {
+    throw new Error(res.message || "获取酒店POI失败");
   }
   return Array.isArray(res.data) ? res.data : [];
 }
