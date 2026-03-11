@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import type { HotelPoi } from "@/types/hotel";
 import dynamic from "next/dynamic";
 // 1. 引入 Leaflet 核心样式（关键修复：缺失样式会导致 Marker 图标不显示）
@@ -14,6 +14,7 @@ L.Icon.Default.mergeOptions({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
+
 
 // Avoid SSR for leaflet components.
 // 2. 优化 dynamic 加载：增加 loading 状态，确保组件完全加载后渲染
@@ -97,6 +98,7 @@ export function HotelPoiMap({
     return [lat, lng] as [number, number];
   }, [points, effectiveHotelPosition]);
 
+
   // 4. 未就绪时显示占位符，避免组件提前渲染
   if (!isMapReady) {
     return (
@@ -116,9 +118,36 @@ export function HotelPoiMap({
         scrollWheelZoom={false}
         style={{ height: "100%", width: "100%" }} // 修复：高度继承父容器，避免高度计算异常
       >
-        <TileLayer
+        {/* <TileLayer
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        /> */}
+        {/* 高德地图卫星图 */}
+        {/* <TileLayer
+          attribution='© 2025 高德地图 GS(2024)6085号'
+          // 高德卫星地图底图
+          url="https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}"
+          subdomains={['1', '2', '3', '4']}
+          maxZoom={18}
+          minZoom={3}
+        />
+        {/* // 可选：叠加卫星地图的路网标注（和卫星底图配合使用） */}
+        {/* <TileLayer
+          attribution='© 2025 高德地图 GS(2024)6085号'
+          url="https://webst0{s}.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={z}"
+          subdomains={['1', '2', '3', '4']}
+          maxZoom={18}
+          minZoom={3}
+        /> */} */
+        {/* 高德地图瓦片图 */}
+        <TileLayer
+          attribution='© 2025 高德地图 GS(2024)6085号' // 高德版权声明，必填
+          url="https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}"
+          subdomains={['1', '2', '3', '4']} // 高德子域名，对应url中的{s}
+          maxZoom={18} // 高德瓦片最大缩放级别18，贴合国内街道级
+          minZoom={3}  // 高德瓦片最小缩放级别3，避免过度缩小
+          // 瓦片加载失败时降级到 OpenStreetMap
+          errorTileUrl="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
         {effectiveHotelPosition && (
