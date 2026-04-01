@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, useEffect } from "react";
 import { getApiBaseUrl } from "@/utils/api";
 import { DateRangePicker, type DateRange } from "../components/DateRangePicker";
+import { getQualityParams } from "@/utils/getImageQuality";
 
 /** 根据两点经纬度计算直线距离（米），Haversine 公式 */
 function haversineDistanceMeters(
@@ -232,6 +233,7 @@ export default function ListPageClient() {
           return;
         }
         setHotels(Array.isArray(json?.data) ? json.data : []);
+        // console.log('列表----->', json?.data);
       })
       .catch((e: unknown) => {
         if (!cancelled) {
@@ -247,8 +249,17 @@ export default function ListPageClient() {
     };
   }, [tab, city, checkIn, checkOut, starParam, activeSort]);
 
+  // Add quality parameter to cover_image URLs
+  const hotelsWithQuality = useMemo(() => {
+    const qualityParams = getQualityParams();
+    return hotels.map(hotel => ({
+      ...hotel,
+      cover_image: hotel.cover_image + qualityParams
+    }));
+  }, [hotels]);
+
   const hotelsWithDistance = useMemo(() => {
-    const list = hotels.map((h) => {
+    const list = hotelsWithQuality.map((h) => {
       const lat = Number(h.latitude);
       const lng = Number(h.longitude);
       const distanceMeters =
@@ -261,7 +272,7 @@ export default function ListPageClient() {
       return [...list].sort((a, b) => (a.distanceMeters ?? 0) - (b.distanceMeters ?? 0));
     }
     return list;
-  }, [hotels, userCoords, activeSort]);
+  }, [hotelsWithQuality, userCoords, activeSort]);
 
   return (
     <main className="min-h-dvh bg-slate-50">

@@ -1,5 +1,6 @@
 import { api } from "./request";
 import type { ApiResponse, HotelDetail, HotelPoi } from "@/types/hotel";
+import { getQualityParams } from "@/utils/getImageQuality";
 
 export interface GetHotelDetailParams {
   hotelId: number;
@@ -19,6 +20,27 @@ export async function getHotelDetail(
   if (res.code !== 200) {
     throw new Error(res.message || "获取酒店详情失败");
   }
+
+  const data = res.data;
+
+  // 获取质量参数，只调用一次
+  const qualityParams = getQualityParams();
+  
+  // 处理图片列表
+  if (data.images && Array.isArray(data.images)) {
+    data.images = data.images.map((img) => {
+      // 确保 img 对象有 url 字段
+      if (img && typeof img === 'object' && img.url) {
+        return {
+          ...img,
+          url: img.url + qualityParams
+        };
+      }
+      return img;
+    });
+  }
+
+
   return res.data;
 }
 
