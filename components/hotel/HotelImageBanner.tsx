@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from "react";
 import type { HotelImage } from "@/types/hotel";
+import { optimizeImageUrl } from "@/utils/imageOptimizer";
 
 const TABS = [
   { key: "cover", label: "封面" },
@@ -51,8 +52,45 @@ export function HotelImageBanner({
   const [activeTab, setActiveTab] = useState(0);
   const [muted, setMuted] = useState(true);
   const [playing, setPlaying] = useState<Record<number, boolean>>({});
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
 
   const items = images?.length ? images : [];
+
+  // 预加载首屏图片（前 3 张）
+  useEffect(() => {
+    if (!items.length || typeof window === 'undefined') return;
+
+    const preloadCount = Math.min(3, items.length);
+    
+    for (let i = 0; i < preloadCount; i++) {
+      const item = items[i];
+      if (!isVideo(item)) {
+        // 优化图片 URL
+        const optimizedUrl = optimizeImageUrl(item.url, { 
+          quality: 85, 
+          width: 1200 
+        });
+        
+        // 创建 Image 对象预加载
+        const img = document.createElement('img');
+        img.src = optimizedUrl;
+        img.fetchPriority = 'high';
+        
+        img.onload = () => {
+          setLoadedImages(prev => new Set(prev).add(i));
+          
+          // 缓存到内存
+          if ('caches' in window) {
+            caches.open('hotel-images').then(cache => {
+              cache.put(optimizedUrl, new Response('', {
+                headers: { 'Content-Type': 'image/webp' }
+              }));
+            });
+          }
+        };
+      }
+    }
+  }, [items]);
 
   useEffect(() => {
     videoRefs.current = videoRefs.current.slice(0, items.length);
@@ -117,6 +155,17 @@ export function HotelImageBanner({
 
   return (
     <div className="relative">
+      {/* 预加载关键资源 */}
+      {items.slice(0, 3).map((item, i) => !isVideo(item) && (
+        <link
+          key={`preload-${i}`}
+          rel="preload"
+          as="image"
+          href={optimizeImageUrl(item.url, { quality: 85, width: 1200 })}
+          fetchPriority="high"
+        />
+      ))}
+
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -124,6 +173,8 @@ export function HotelImageBanner({
       >
         {items.map((item, i) => {
           const isVideoItem = isVideo(item);
+          const isPreloaded = loadedImages.has(i);
+          
           return (
             <div
               key={i}
@@ -160,9 +211,19 @@ export function HotelImageBanner({
                 </>
               ) : (
                 <img
-                  src={item.url}
+                  src={optimizeImageUrl(item.url, { 
+                    quality: i === 0 ? 85 : undefined, 
+                    width: i === 0 ? 1200 : 800 
+                  })}
                   alt={`${alt} ${i + 1}`}
                   className="w-full h-full object-cover"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  fetchPriority={i === 0 ? "high" : "auto"}
+                  style={{
+                    opacity: isPreloaded || i !== 0 ? 1 : 0,
+                    transition: 'opacity 0.3s ease-in-out'
+                  }}
                 />
               )}
             </div>
